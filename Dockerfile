@@ -1,0 +1,66 @@
+FROM alpine:latest
+
+RUN apk --update --no-cache add \
+    bash \
+    curl \
+    libgd \
+    mysql-client \
+    caddy \
+    php8 \
+    php8-cli \
+    php8-ctype \
+    php8-curl \
+    php8-dom \
+    php8-exif \
+    php8-fileinfo \
+    php8-fpm \
+    php8-gd \
+    php8-gmp \
+    php8-iconv \
+    php8-intl \
+    php8-json \
+    php8-mbstring \
+    php8-opcache \
+    php8-openssl \
+    php8-pdo \
+    php8-pdo_mysql \
+    php8-pecl-uuid \
+    php8-phar \
+    php8-session \
+    php8-simplexml \
+    php8-sodium \
+    php8-tokenizer \
+    php8-xml \
+    php8-xmlwriter \
+    php8-zip \
+    php8-zlib \
+    shadow \
+    tar \
+    tzdata \
+  && ln -s /usr/bin/php8 /usr/bin/php \
+  && rm -rf /tmp/* /var/cache/apk/* /var/www/*
+
+ENV S6_BEHAVIOUR_IF_STAGE2_FAILS="2" \
+TZ="UTC" \
+PUID="1000" \
+PGID="1000"
+
+ARG FLARUM_VERSION
+RUN mkdir -p /opt/flarum \
+  && curl -sSL https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer \
+  && COMPOSER_CACHE_DIR="/tmp" composer create-project flarum/flarum /opt/flarum $FLARUM_VERSION --stability=beta \
+  && composer clear-cache \
+  && addgroup -g ${PGID} flarum \
+  && adduser -D -h /opt/flarum -u ${PUID} -G flarum -s /bin/sh -D flarum \
+  && chown -R flarum. /opt/flarum \
+  && rm -rf /root/.composer /tmp/*
+
+RUN chmod +x /usr/local/bin/*
+
+EXPOSE 8000
+WORKDIR /opt/flarum
+VOLUME [ "/data" ]
+
+ENTRYPOINT [ "/init" ]
+
+
